@@ -1,0 +1,3 @@
+deffcode
+twelvelabs
+python-dotenv
