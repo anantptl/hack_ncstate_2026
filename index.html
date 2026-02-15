@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Forensics | AI-Powered Analysis Platform</title>
+    <link rel="stylesheet" href="src/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+                        'mono': ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-gray-50 via-white to-gray-100 min-h-screen">
+    <!-- Background Pattern -->
+    <div class="fixed inset-0 opacity-30 pointer-events-none">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,_rgba(59,130,246,0.15)_1px,transparent_0)] bg-[length:24px_24px]"></div>
+    </div>
+
+    <div class="flex min-h-screen relative">
+        <!-- Enhanced Sidebar -->
+        <div class="w-72 bg-white/95 backdrop-blur-xl border-r border-gray-200/50 shadow-2xl shadow-gray-900/5 flex flex-col relative z-10">
+            <!-- Logo Section -->
+            <div class="p-8 border-b border-gray-100">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-shield-halved text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">Video Forensics</h1>
+                        <p class="text-sm text-gray-500 font-medium">AI Analysis Platform</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 p-6">
+                <div class="space-y-2">
+                    <div class="nav-item nav-item-active" data-page="upload">
+                        <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-cloud-upload text-blue-600"></i>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-gray-900">Upload & Analyze</div>
+                            <div class="text-xs text-gray-500">Process new videos</div>
+                        </div>
+                    </div>
+                    <div class="nav-item nav-item-inactive" data-page="results">
+                        <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                            <i class="fas fa-chart-analytics text-gray-600"></i>
+                        </div>
+                        <div>
+                            <div class="font-semibold">Analysis Results</div>
+                            <div class="text-xs text-gray-500">View findings</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="mt-12 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                    <h3 class="font-semibold text-gray-900 mb-4">Analysis Overview</h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Accuracy Rate</span>
+                            <span class="font-semibold text-blue-600">97.3%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Processing Speed</span>
+                            <span class="font-semibold text-green-600">Real-time</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">AI Models</span>
+                            <span class="font-semibold text-purple-600">Advanced</span>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Version Info -->
+            <div class="p-6 border-t border-gray-100">
+                <div class="flex items-center justify-between text-sm text-gray-500">
+                    <span>Version 2.1.0</span>
+                    <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col min-h-screen">
+            <!-- Enhanced Header -->
+            <header class="bg-white/90 backdrop-blur-xl border-b border-gray-200/50 p-6 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-900">Video Analysis</h2>
+                        <p class="text-gray-600 mt-1">Upload and analyze videos for authenticity and misinformation detection</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="status-badge status-idle" id="statusPill">
+                            <div class="w-2 h-2 bg-current rounded-full mr-2"></div>
+                            <span id="statusText">Ready</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Container -->
+            <div class="flex-1 p-6 overflow-y-auto">
+                <div class="grid lg:grid-cols-3 gap-10 max-w-7xl mx-auto" id="contentContainer">
+                    <!-- Upload Section -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Upload Card -->
+                        <div class="card card-hover p-8" id="uploadCard">
+                            <div class="mb-6">
+                                <h3 class="text-xl font-bold text-gray-900 mb-2">Upload Video File</h3>
+                                <p class="text-gray-600">Drag and drop your video file or click to select. Supports MP4, MOV, WEBM, AVI, WMV, FLV, MKV formats.</p>
+                            </div>
+                            
+                            <!-- Enhanced Dropzone -->
+                            <div class="dropzone group" id="dropzone">
+                                <div class="space-y-6">
+                                    <div class="w-20 h-20 mx-auto bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                        <i class="fas fa-cloud-upload text-3xl text-blue-600"></i>
+                                    </div>
+                                    <div class="space-y-2">
+                                        <p class="text-lg font-semibold text-gray-700">Drop your video here</p>
+                                        <p class="text-gray-500">or click to browse files</p>
+                                    </div>
+                                    <button type="button" class="btn-primary mx-auto" id="chooseFileBtn">
+                                        <i class="fas fa-folder-open mr-2"></i>
+                                        Choose Video File
+                                    </button>
+                                    <input type="file" id="fileInput" accept=".mp4,.mov,.webm,.avi,.wmv,.flv,.mkv" class="sr-only">
+                                    <p class="text-sm text-gray-400">Max file size: 500MB</p>
+                                </div>
+                            </div>
+
+                            <!-- Caption Section -->
+                            <div class="mt-8 p-6 bg-gray-50/50 rounded-2xl border border-gray-100">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-quote-left text-purple-600 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <label for="captionInput" class="text-sm font-semibold text-gray-900">Additional Context</label>
+                                        <p class="text-xs text-gray-500">Optional information to enhance analysis</p>
+                                    </div>
+                                </div>
+                                <textarea 
+                                    id="captionInput" 
+                                    class="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+                                    placeholder="Add any relevant context, claims, or background information about this video..."
+                                    rows="3"
+                                    maxlength="500"></textarea>
+                                <div class="flex justify-between items-center mt-3">
+                                    <div class="text-xs text-gray-500">This information will be considered during AI analysis</div>
+                                    <div class="text-xs text-gray-400 font-mono" id="captionCounter">0/500</div>
+                                </div>
+                            </div>
+                            
+                            <!-- File Preview -->
+                            <div class="hidden mt-8 p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl border border-gray-200" id="fileInfo">
+                                <div class="flex items-start gap-6">
+                                    <div class="relative">
+                                        <video id="videoPreview" class="hidden w-40 h-32 object-cover rounded-xl shadow-lg"></video>
+                                        <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl pointer-events-none"></div>
+                                    </div>
+                                    <div class="flex-1 space-y-3">
+                                        <div>
+                                            <div class="font-semibold text-gray-900" id="fileName"></div>
+                                            <div class="text-sm text-gray-600" id="fileMeta"></div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                                            <span class="text-sm font-medium text-gray-700" id="statusLine">Ready to analyze</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Progress Bar -->
+                                <div class="hidden mt-6" id="uploadProgress">
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span class="text-gray-600" id="progressLabel">Processing...</span>
+                                        <span class="font-medium text-blue-600" id="uploadPercent">0%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-300 ease-out" id="uploadProgressFill" style="width: 0%"></div>
+                                    </div>
+                                    <div class="text-xs text-gray-500 mt-2" id="progressStatus">Initializing analysis...</div>
+                                </div>
+
+                                <!-- Analyze Buttons -->
+                                <div class="hidden mt-6" id="analyzeButtonContainer">
+                                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-0.5 rounded-2xl">
+                                        <div class="bg-white p-6 rounded-2xl">
+                                            <div class="text-center space-y-4">
+                                                <div class="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                                    <i class="fas fa-brain text-white text-2xl"></i>
+                                                </div>
+                                                <div>
+                                                    <h4 class="font-bold text-gray-900 text-lg">Ready for AI Analysis</h4>
+                                                    <p class="text-gray-600 text-sm">Choose the type of analysis to perform</p>
+                                                </div>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <button class="btn-primary text-base px-6 py-3" id="analyzeFactCheckBtn">
+                                                        <i class="fas fa-shield-check mr-2"></i>
+                                                        Fact-Check Analysis
+                                                    </button>
+                                                    <button class="btn-primary text-base px-6 py-3" id="analyzeAIBtn">
+                                                        <i class="fas fa-robot mr-2"></i>
+                                                        AI Detection
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Error Message -->
+                            <div class="hidden mt-6 p-4 bg-red-50 border border-red-200 rounded-xl" id="errorMessage">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-exclamation-triangle text-red-500"></i>
+                                    <div class="text-red-700 font-medium" id="errorText"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Progress Sidebar -->
+                    <div class="space-y-6">
+                        <!-- Analysis Outputs -->
+                        <div class="card p-6">
+                            <h3 class="font-bold text-gray-900 mb-4">Analysis Outputs</h3>
+                            <div class="grid grid-cols-2 gap-3" id="outputChips">
+                                <div class="output-chip p-3 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all duration-200 text-center" data-target="verdict">
+                                    <i class="fas fa-shield-check text-blue-600 text-lg mb-2 block"></i>
+                                    <span class="text-xs font-medium text-gray-700">Verdict</span>
+                                </div>
+                                <div class="output-chip p-3 rounded-xl border border-gray-200 hover:border-green-300 hover:bg-green-50 cursor-pointer transition-all duration-200 text-center" data-target="claims">
+                                    <i class="fas fa-search text-green-600 text-lg mb-2 block"></i>
+                                    <span class="text-xs font-medium text-gray-700">Claims</span>
+                                </div>
+                                <div class="output-chip p-3 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50 cursor-pointer transition-all duration-200 text-center" data-target="splice">
+                                    <i class="fas fa-cut text-purple-600 text-lg mb-2 block"></i>
+                                    <span class="text-xs font-medium text-gray-700">Splice</span>
+                                </div>
+                                <div class="output-chip p-3 rounded-xl border border-gray-200 hover:border-orange-300 hover:bg-orange-50 cursor-pointer transition-all duration-200 text-center" data-target="timeline">
+                                    <i class="fas fa-clock text-orange-600 text-lg mb-2 block"></i>
+                                    <span class="text-xs font-medium text-gray-700">Timeline</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Model Status Card -->
+                        <div class="card p-6">
+                            <h3 class="font-bold text-gray-900 mb-4">AI Model Status</h3>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">TwelveLabs API</span>
+                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Active</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Gemini AI</span>
+                                    <span class="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Ready</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Video Processing</span>
+                                    <span class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full" id="processingStatus">Standby</span>
+                                </div>
+                            </div>
+                            <div class="text-center mt-4">
+                                <p class="text-gray-600">Analyzing video content with advanced AI models for authenticity verification and misinformation detection.</p>
+                            </div>
+                        </div>
+
+                        <!-- AI Features -->
+                        <div class="card p-6">
+                            <h3 class="font-bold text-gray-900 mb-4">AI Analysis Features</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-eye text-blue-600 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-900 text-sm">Visual Analysis</div>
+                                        <div class="text-xs text-gray-500">Scene detection & OCR</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-waveform text-green-600 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-900 text-sm">Audio Processing</div>
+                                        <div class="text-xs text-gray-500">Speech recognition</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-brain text-purple-600 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-gray-900 text-sm">Deep Learning</div>
+                                        <div class="text-xs text-gray-500">Authenticity detection</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results Section (Hidden by default) -->
+                <div class="hidden max-w-7xl mx-auto" id="resultsSection">
+                    <!-- Results content will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/app.ts"></script>
+</body>
+</html>

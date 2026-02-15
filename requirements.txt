@@ -1,3 +1,14 @@
+<<<<<<< HEAD
 deffcode
 twelvelabs
 python-dotenv
+=======
+flask==3.0.0
+flask-cors==4.0.0
+python-dotenv==1.0.0
+google-generativeai>=0.3.0
+twelvelabs>=1.0.0
+werkzeug==3.0.1
+tavily-python>=0.3.0
+c2pa-python>=0.4.0
+>>>>>>> d360fab (frontend + backend code)
