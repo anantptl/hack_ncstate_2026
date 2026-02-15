@@ -1,5 +1,3 @@
-"""Video Forensics Backend - Flask API"""
-
 import os
 import json
 import time
@@ -12,7 +10,7 @@ from werkzeug.utils import secure_filename
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import google.generativeai as genai
+from google import genai
 from twelvelabs import TwelveLabs
 from dotenv import load_dotenv
 from tavily import TavilyClient
@@ -25,7 +23,7 @@ INDEX_POLL_SEC = 2.0
 WEB_MAX_RESULTS = 5
 WEB_SEARCH_DEPTH = "basic"
 WEB_CONTENT_TRIM_CHARS = 3500
-GEMINI_TEXT_MODEL = "gemini-2.0-flash"
+GEMINI_TEXT_MODEL = "gemini-1.5-flash"
 GEMINI_VIDEO_MODEL = "gemini-2.5-flash"
 
 def log_step(msg: str):
@@ -40,30 +38,31 @@ def log_info(msg: str):
 # =========================
 # CONFIG
 # =========================
-TL_API_KEY = os.getenv("TL_API_KEY", "").strip()
+TWELVELABS_API_KEY = os.getenv("TWELVELABS_API_KEY", "").strip()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "").strip()
 
-if not TL_API_KEY:
-    raise RuntimeError("Missing TL_API_KEY env var")
+if not TWELVELABS_API_KEY:
+    raise RuntimeError("Missing TWELVELABS_API_KEY env var")
 if not GEMINI_API_KEY:
     raise RuntimeError("Missing GEMINI_API_KEY env var")
 if not TAVILY_API_KEY:
     raise RuntimeError("Missing TAVILY_API_KEY env var")
 
-# Gemini clients
-genai.configure(api_key=GEMINI_API_KEY)
+# Gemini client
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Model for text analysis (claims, fact-checking, timeline)
-# Using 2.0-flash-exp for speed and cost-effectiveness
-gemini_text_model = genai.GenerativeModel(GEMINI_TEXT_MODEL)
-
-# Model for multimodal video analysis (SynthID detection)
-# Using 2.0-flash-exp with video support
-gemini_video_model_name = GEMINI_VIDEO_MODEL
+# Model names
+GEMINI_TEXT_MODEL_NAME = GEMINI_TEXT_MODEL
+GEMINI_VIDEO_MODEL_NAME = GEMINI_VIDEO_MODEL
 
 # TwelveLabs client
-client = TwelveLabs(api_key=TL_API_KEY)
+try:
+    client = TwelveLabs(api_key=TWELVELABS_API_KEY)
+    log_info(f"✓ TwelveLabs client initialized with key: {TWELVELABS_API_KEY[:10]}...")
+except Exception as e:
+    log_info(f"⚠️ TwelveLabs client initialization warning: {e}")
+    client = TwelveLabs(api_key=TWELVELABS_API_KEY)
 
 # Tavily client
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
@@ -90,7 +89,6 @@ def with_retries(fn, retries=4, base_sleep=1.5):
             last_err = e
             sleep = base_sleep * (2 ** (attempt - 1))
             log_info(f"⚠️ Retry {attempt}/{retries} after {type(e).__name__}: sleeping {sleep:.1f}s")
-            debug(f"Retry error details: {repr(e)}")
             time.sleep(sleep)
     raise RuntimeError(f"Failed after retries: {last_err}")
 
@@ -175,18 +173,19 @@ def check_video_synthid(video_path: str, video_metadata: Dict, twelvelabs_analys
     try:
         # Upload video to Gemini
         log_info("Uploading video to Gemini...")
-        video_file = genai.upload_file(path=video_path)
+        video_file = gemini_client.files.upload(file=video_path)
         
         # Wait for processing
         log_info("Waiting for video processing...")
-        while video_file.state.name == "PROCESSING":
+        while True:
+            f = gemini_client.files.get(name=video_file.name)
+            state = getattr(f, "state", None) or getattr(f, "metadata", {}).get("state")
+            log_info(f"File state: {state}")
+            if state == "ACTIVE":
+                break
+            if state in ("FAILED", "DELETED"):
+                raise RuntimeError(f"File processing failed with state={state}")
             time.sleep(2)
-            video_file = genai.get_file(video_file.name)
-        
-        if video_file.state.name == "FAILED":
-            raise RuntimeError(f"Video upload failed: {video_file.state.name}")
-        
-        log_info(f"Video ready: {video_file.uri}")
         
         # Analyze with multimodal context
         prompt = f"""
@@ -196,21 +195,25 @@ METADATA: {json.dumps(video_metadata, indent=2)}
 Video Analysis Context: {twelvelabs_analysis[:2000]}
 
 TASK:
-1. Cross-reference visual and audio elements for consistency
-2. Look for Visual-Audio Inconsistency (e.g., environment doesn't match claims)
-3. Detect signs of AI generation or deepfake manipulation
-4. Check if C2PA metadata indicates AI generation
+1. Cross-reference the claims in the transcript with known factual data.
+2. Look for 'Visual-Audio Inconsistency' (e.g., if the speaker's environment 
+   doesn't match their claims).
+3. Detect signs of AI generation or deepfake manipulation.
+4. Check if C2PA metadata indicates AI generation.
 
 Return EXACTLY this JSON structure: 
 {{ "is_ai": bool, "trust_score": 0-100, "confidence": 0-100, "note": "string" }}
 """
         
         # Use multimodal model for video analysis
-        log_info(f"Using Gemini model: {gemini_video_model_name}")
-        video_model = genai.GenerativeModel(model_name=gemini_video_model_name)
-        response = video_model.generate_content([video_file, prompt])
+        log_info(f"Using Gemini model: {GEMINI_VIDEO_MODEL_NAME}")
+        response = gemini_client.models.generate_content(
+            model=GEMINI_VIDEO_MODEL_NAME,
+            contents=[video_file, prompt]
+        )
         
         text = (response.text or "").strip()
+        log_info(f"Gemini response: {text[:200]}...")
         
         # Extract JSON
         if "```" in text:
@@ -226,6 +229,8 @@ Return EXACTLY this JSON structure:
         
     except Exception as e:
         log_info(f"⚠️ SynthID analysis error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"is_ai": False, "trust_score": 50, "confidence": 50, "note": f"Error: {str(e)}"}
 
 
@@ -296,9 +301,10 @@ def analyze_video(video_id: str, prompt: str) -> str:
 # GEMINI HELPERS
 # =========================
 def gemini_json(prompt: str) -> Dict[str, Any]:
-    debug(f"gemini_json() prompt length={len(prompt)}")
-    
-    resp = gemini_text_model.generate_content(prompt)
+    resp = gemini_client.models.generate_content(
+        model=GEMINI_TEXT_MODEL_NAME,
+        contents=prompt
+    )
     text = (resp.text or "").strip()
     
     if "```" in text:
@@ -745,7 +751,7 @@ SCENE_SUMMARY:
 
 @app.route('/api/analyze-ai', methods=['POST'])
 def analyze_ai():
-    """AI generation detection endpoint"""
+    """AI generation detection endpoint with enhanced TwelveLabs analysis"""
     log_step("New request: /api/analyze-ai")
     
     # Validate request
@@ -767,8 +773,31 @@ def analyze_ai():
         log_step("PHASE 1: Extracting Metadata")
         metadata = summarize_metadata(video_path)
         
-        log_step("PHASE 2: SynthID AI Detection")
-        synthid = check_video_synthid(video_path, metadata, "")
+        log_step("PHASE 2: TwelveLabs Video Analysis")
+        idx_id = None
+        video_id = None
+        twelvelabs_analysis = ""
+        
+        try:
+            idx_id = create_index()
+            video_id = upload_and_index(idx_id, video_path)
+            
+            base_prompt = """
+Analyze this video and provide:
+TRANSCRIPT:
+VISIBLE_TEXT:
+SCENE_SUMMARY:
+AUDIO_CHARACTERISTICS:
+VISUAL_QUALITY:
+"""
+            twelvelabs_analysis = analyze_video(video_id, base_prompt)
+            log_info(f"✓ TwelveLabs analysis complete ({len(twelvelabs_analysis)} chars)")
+        except Exception as tl_error:
+            log_info(f"⚠️ TwelveLabs analysis failed: {tl_error}")
+            twelvelabs_analysis = "TwelveLabs analysis unavailable"
+        
+        log_step("PHASE 3: SynthID AI Detection")
+        synthid = check_video_synthid(video_path, metadata, twelvelabs_analysis)
         
         report = {
             "is_ai_generated": synthid.get("is_ai", False) or metadata.get("c2pa_ai", False),
@@ -779,7 +808,8 @@ def analyze_ai():
                     "detected": metadata.get("c2pa_ai", False),
                     "data": metadata.get("c2pa_data", {})
                 },
-                "synthid_analysis": synthid
+                "synthid_analysis": synthid,
+                "twelvelabs_context": twelvelabs_analysis[:500] if twelvelabs_analysis else "N/A"
             },
             "metadata": {
                 "format": metadata.get("format"),
@@ -812,15 +842,31 @@ def analyze_ai():
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check endpoint"""
+    # Test TwelveLabs API
+    tl_status = False
+    tl_error = None
+    try:
+        # Try to list indexes to verify API key
+        indexes = client.indexes.list(page_limit=1)
+        tl_status = True
+    except Exception as e:
+        tl_error = str(e)
+        log_info(f"TwelveLabs health check failed: {e}")
+    
     return jsonify({
-        "status": "ok",
+        "status": "ok" if tl_status else "degraded",
         "timestamp": time.time(),
         "endpoints": {
             "factcheck": "/api/analyze-factcheck",
             "ai_detection": "/api/analyze-ai"
         },
         "services": {
-            "twelvelabs": bool(TL_API_KEY),
+            "twelvelabs": {
+                "available": tl_status,
+                "key_configured": bool(TWELVELABS_API_KEY),
+                "key_prefix": TWELVELABS_API_KEY[:10] + "..." if TWELVELABS_API_KEY else "missing",
+                "error": tl_error
+            },
             "gemini": bool(GEMINI_API_KEY),
             "tavily": bool(TAVILY_API_KEY),
         },
@@ -835,7 +881,7 @@ if __name__ == '__main__':
     print("=" * 60)
     print("Video Forensics Backend - Dual Endpoint Server")
     print("=" * 60)
-    print(f"TwelveLabs API: {'✓' if TL_API_KEY else '✗'}")
+    print(f"TwelveLabs API: {'✓' if TWELVELABS_API_KEY else '✗'}")
     print(f"Gemini API: {'✓' if GEMINI_API_KEY else '✗'}")
     print(f"Tavily API: {'✓' if TAVILY_API_KEY else '✗'}")
     print("-" * 60)
